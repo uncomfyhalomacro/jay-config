@@ -1,0 +1,3 @@
+[submodule "jay"]
+	path = jay
+	url = https://github.com/mahkoh/jay

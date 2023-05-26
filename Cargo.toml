@@ -8,6 +8,7 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 jay-config = { path = "../jay-config" }
+jay = { path = "../jay" }
 log = "0.4.14"
 rand = "0.8.5"
 chrono = "0.4.19"
