@@ -1,5 +1,8 @@
 use battery::{self, units::ratio};
-use jay_config::keyboard::syms::SYM_Sys_Req;
+use jay_config::{
+    input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH},
+    keyboard::syms::SYM_Sys_Req,
+};
 use uom::{
     fmt::DisplayStyle::*,
     si::f32::*,
@@ -67,12 +70,14 @@ fn configure_seat(s: Seat) {
 
     s.bind(MOD | SHIFT | SYM_f, move || s.toggle_floating());
 
-    s.bind(MOD | SHIFT | SYM_Return, || Command::new("alacritty").spawn());
+    s.bind(MOD | SHIFT | SYM_Return, || {
+        Command::new("alacritty").spawn()
+    });
 
     s.bind(MOD | SYM_p, || Command::new("fuzzel").spawn());
 
     s.bind(MOD | SYM_bracketleft, || {
-        Command::new("tessen").arg("-d").arg("fuzzel").spawn()
+        Command::new("tessen").arg("-d").arg("fuzzel").arg("-a").arg("copy").spawn()
     });
 
     s.bind(MOD | SYM_bracketright, || {
@@ -83,7 +88,7 @@ fn configure_seat(s: Seat) {
         Command::new("/home/uncomfy/.config/river/fnottctl_list.sh").spawn()
     });
 
-    s.bind(MOD | SHIFT | SYM_i, || {
+    s.bind(MOD | SYM_b, || {
         Command::new("/home/uncomfy/.config/river/nubrowser.nu").spawn()
     });
 
@@ -94,14 +99,14 @@ fn configure_seat(s: Seat) {
     // Screenshot will not work yet. Jay screenshot does :)
 
     s.bind(MOD | SHIFT | SYM_y, || {
-        Command::new("yt-cli.nu").spawn()
+        Command::new("/home/uncomfy/.local/bin/yt-cli.nu").spawn()
     });
 
     s.bind(MOD | SYM_x, quit);
 
     s.bind(MOD | SHIFT | SYM_r, reload);
 
-   let use_hc = Cell::new(true);
+    let use_hc = Cell::new(true);
     s.bind(MOD | SHIFT | SYM_m, move || {
         let hc = !use_hc.get();
         use_hc.set(hc);
@@ -228,8 +233,10 @@ pub fn configure() {
     let seat = get_seat("default");
     configure_seat(seat);
     let handle_input_device = move |device: InputDevice| {
-        if device.has_capability(CAP_POINTER) {
+        if device.has_capability(CAP_TOUCH) {
             device.set_left_handed(false);
+            device.set_accel_profile(ACCEL_PROFILE_FLAT);
+            device.set_accel_speed(1.70);
             device.set_transform_matrix([[0.35, 0.0], [0.0, 0.35]]);
         }
         device.set_tap_enabled(true);
