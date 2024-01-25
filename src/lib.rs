@@ -1,14 +1,12 @@
-use battery::{self, units::ratio};
+use battery::{self};
 use jay_config::{
     input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH},
-    keyboard::syms::SYM_Sys_Req,
+    keyboard::syms::{
+        SYM_backslash,
+        SYM_c, SYM_p, SYM_s, SYM_space,
+    },
 };
-use uom::{
-    fmt::DisplayStyle::*,
-    si::f32::*,
-    si::time::{minute, second},
-    Conversion,
-};
+use uom::{fmt::DisplayStyle::*, si::f32::*, si::time::minute};
 
 use sysinfo::{CpuExt, CpuRefreshKind, RefreshKind, System, SystemExt};
 use {
@@ -18,16 +16,15 @@ use {
         embedded::grab_input_device,
         exec::Command,
         get_workspace,
-        input::capability::{CAP_KEYBOARD, CAP_POINTER},
+        input::capability::CAP_KEYBOARD,
         input::{get_seat, input_devices, on_new_input_device, InputDevice, Seat},
         keyboard::{
-            mods::{Modifiers, ALT, CTRL, MOD1, MOD4, SHIFT},
+            mods::{Modifiers, ALT, CTRL, MOD4, SHIFT},
             syms::{
-                SYM_3270_PrintScreen, SYM_Print, SYM_Return, SYM_SunPrint_Screen, SYM_Super_L,
-                SYM_b, SYM_bracketleft, SYM_bracketright, SYM_c, SYM_d, SYM_f, SYM_h, SYM_i, SYM_j,
-                SYM_k, SYM_l, SYM_m, SYM_o, SYM_p, SYM_q, SYM_r, SYM_slash, SYM_t, SYM_u, SYM_v,
-                SYM_x, SYM_y, SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6, SYM_F1, SYM_F10, SYM_F11,
-                SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7, SYM_F8, SYM_F9,
+                SYM_Return, SYM_b, SYM_d, SYM_f, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q,
+                SYM_r, SYM_slash, SYM_t, SYM_u, SYM_v, SYM_x, SYM_y, SYM_1, SYM_2, SYM_3, SYM_4,
+                SYM_5, SYM_6, SYM_F1, SYM_F10, SYM_F11, SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5,
+                SYM_F6, SYM_F7, SYM_F8, SYM_F9,
             },
         },
         quit, reload,
@@ -58,33 +55,38 @@ fn configure_seat(s: Seat) {
     s.bind(MOD | SHIFT | SYM_l, move || s.move_(Right));
 
     s.bind(MOD | SYM_d, move || s.create_split(Horizontal));
-    s.bind(MOD | SYM_v, move || s.create_split(Vertical));
+    s.bind(MOD | SHIFT | SYM_s, move || s.create_split(Vertical));
 
-    s.bind(MOD | SYM_t, move || s.toggle_split());
+    s.bind(MOD | SYM_s, move || s.toggle_split());
     s.bind(MOD | SYM_m, move || s.toggle_mono());
-    s.bind(MOD | SYM_u, move || s.toggle_fullscreen());
+    s.bind(MOD | SYM_f, move || s.toggle_fullscreen());
 
-    s.bind(MOD | SYM_f, move || s.focus_parent());
+    s.bind(MOD | SYM_t, move || s.focus_parent());
 
     s.bind(MOD | SHIFT | SYM_q, move || s.close());
 
-    s.bind(MOD | SHIFT | SYM_f, move || s.toggle_floating());
+    s.bind(MOD | SYM_space, move || s.toggle_floating());
 
     s.bind(MOD | SHIFT | SYM_Return, || {
         Command::new("alacritty").spawn()
     });
 
-    s.bind(MOD | SYM_p, || Command::new("fuzzel").spawn());
+    s.bind(MOD | SYM_u, || Command::new("fuzzel").spawn());
 
-    s.bind(MOD | SYM_bracketleft, || {
-        Command::new("tessen").arg("-d").arg("fuzzel").arg("-a").arg("copy").spawn()
-    });
-
-    s.bind(MOD | SYM_bracketright, || {
-        Command::new("/home/uncomfy/.config/river/book.nu").spawn()
+    s.bind(MOD | SYM_v, || {
+        Command::new("tessen")
+            .arg("-d")
+            .arg("fuzzel")
+            .arg("-a")
+            .arg("copy")
+            .spawn()
     });
 
     s.bind(MOD | SYM_slash, || {
+        Command::new("/home/uncomfy/.config/river/book.nu").spawn()
+    });
+
+    s.bind(MOD | SYM_backslash, || {
         Command::new("/home/uncomfy/.config/river/fnottctl_list.sh").spawn()
     });
 
@@ -96,13 +98,15 @@ fn configure_seat(s: Seat) {
         Command::new("/home/uncomfy/.config/river/firefoxprofiles.nu").spawn()
     });
 
-    // Screenshot will not work yet. Jay screenshot does :)
-
-    s.bind(MOD | SHIFT | SYM_y, || {
-        Command::new("/home/uncomfy/.local/bin/yt-cli.nu").spawn()
+    s.bind(MOD | SYM_p, || {
+        Command::new("/home/uncomfy/.local/bin/mygrimshot.sh").spawn()
     });
 
-    s.bind(MOD | SYM_x, quit);
+    s.bind(MOD | SHIFT | SYM_p, || {
+        Command::new("/home/uncomfy/.local/bin/mygrimshot.sh area").spawn()
+    });
+
+    s.bind(MOD | SHIFT | SYM_x, quit);
 
     s.bind(MOD | SHIFT | SYM_r, reload);
 
@@ -146,9 +150,9 @@ fn configure_seat(s: Seat) {
         }
         if grab {
             s.unbind(SYM_y);
-            s.bind(MOD | SYM_b, move || do_grab(s, false));
+            s.bind(MOD | SYM_c, move || do_grab(s, false));
         } else {
-            s.unbind(MOD | SYM_b);
+            s.unbind(MOD | SYM_c);
             s.bind(SYM_y, move || do_grab(s, true));
         }
     }
