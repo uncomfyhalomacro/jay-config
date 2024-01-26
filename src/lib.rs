@@ -1,10 +1,6 @@
 use battery::{self};
 use jay_config::{
-    input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH},
-    keyboard::syms::{
-        SYM_backslash,
-        SYM_c, SYM_p, SYM_s, SYM_space,
-    },
+    input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH}, keyboard::syms::{SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space}, on_idle
 };
 use uom::{fmt::DisplayStyle::*, si::f32::*, si::time::minute};
 
@@ -14,6 +10,7 @@ use {
     jay_config::{
         config,
         embedded::grab_input_device,
+        exec::set_env,
         exec::Command,
         get_workspace,
         input::capability::CAP_KEYBOARD,
@@ -249,30 +246,22 @@ pub fn configure() {
     input_devices().into_iter().for_each(handle_input_device);
     on_new_input_device(handle_input_device);
 
+    set_env("GTK_THEME", "Adwaita:dark");
+
     // Configure the status message
     setup_status().expect("Status not working");
 
     // Start programs
     on_graphics_initialized(|| {
-        Command::new("systemctl")
-            .arg("--user")
-            .arg("import-environment")
-            .arg("WAYLAND_DISPLAY")
-            .arg("XDG_CURRENT_DESKTOP")
-            .spawn();
-        Command::new("dbus-update-activation-environment")
-            .arg("SEATD_SOCK")
-            .arg("DISPLAY")
-            .arg("WAYLAND_DISPLAY")
-            .arg("DESKTOP_SESSION=jay")
-            .arg("XDG_CURRENT_DESKTOP=jay")
-            .spawn();
         Command::new("/usr/libexec/polkit-kde-authentication-agent-1").spawn();
         Command::new("fnott").spawn();
         Command::new("wbg")
             .arg("/home/uncomfy/.config/river/backgrounds/romb.png")
             .spawn();
     });
+
+    // TODO: add a screenlocker once ext_session_lock-v1 lands
+
 }
 
 config!(configure);
