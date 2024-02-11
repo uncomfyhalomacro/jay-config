@@ -1,10 +1,12 @@
 use battery::{self};
 use jay_config::{
-    input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH}, keyboard::syms::{SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space}, on_idle
+    input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH},
+    keyboard::syms::{SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space},
+    on_idle,
 };
 use uom::{fmt::DisplayStyle::*, si::f32::*, si::time::minute};
 
-use sysinfo::{CpuExt, CpuRefreshKind, RefreshKind, System, SystemExt};
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, RefreshKind, System};
 use {
     chrono::{format::StrftimeItems, Local},
     jay_config::{
@@ -64,8 +66,10 @@ fn configure_seat(s: Seat) {
 
     s.bind(MOD | SYM_space, move || s.toggle_floating());
 
-    s.bind(MOD | SHIFT | SYM_Return, || {
-        Command::new("alacritty").spawn()
+    s.bind(MOD | SHIFT | SYM_Return, || Command::new("foot").spawn());
+
+    s.bind(MOD | SYM_c, || {
+        Command::new("/home/uncomfy/.config/river/clipboardmanager.sh").spawn()
     });
 
     s.bind(MOD | SYM_u, || Command::new("fuzzel").spawn());
@@ -92,7 +96,11 @@ fn configure_seat(s: Seat) {
     });
 
     s.bind(MOD | SYM_i, || {
-        Command::new("/home/uncomfy/.config/river/firefoxprofiles.nu").spawn()
+        Command::new("flatpak")
+            .arg("--user")
+            .arg("run")
+            .arg("org.mozilla.firefox")
+            .spawn()
     });
 
     s.bind(MOD | SYM_p, || {
@@ -134,26 +142,26 @@ fn configure_seat(s: Seat) {
         });
     }
 
-    fn do_grab(s: Seat, grab: bool) {
-        for device in s.input_devices() {
-            if device.has_capability(CAP_KEYBOARD) {
-                log::info!(
-                    "{}rabbing keyboard {:?}",
-                    if grab { "G" } else { "Ung" },
-                    device.0
-                );
-                grab_input_device(device, grab);
-            }
-        }
-        if grab {
-            s.unbind(SYM_y);
-            s.bind(MOD | SYM_c, move || do_grab(s, false));
-        } else {
-            s.unbind(MOD | SYM_c);
-            s.bind(SYM_y, move || do_grab(s, true));
-        }
-    }
-    do_grab(s, false);
+    // fn do_grab(s: Seat, grab: bool) {
+    //     for device in s.input_devices() {
+    //         if device.has_capability(CAP_KEYBOARD) {
+    //             log::info!(
+    //                 "{}rabbing keyboard {:?}",
+    //                 if grab { "G" } else { "Ung" },
+    //                 device.0
+    //             );
+    //             grab_input_device(device, grab);
+    //         }
+    //     }
+    //     if grab {
+    //         s.unbind(SYM_y);
+    //         s.bind(MOD | SYM_c, move || do_grab(s, false));
+    //     } else
+    //         s.unbind(MOD | SYM_c);
+    //         s.bind(SYM_y, move || do_grab(s, true));
+    //     }
+    // }
+    // do_grab(s, false);
 }
 
 // fn check_battery() -> battery::Result<()> {
@@ -176,7 +184,7 @@ fn setup_status() -> Result<(), battery::Error> {
     let time_format: Vec<_> = StrftimeItems::new("%Y-%m-%d %H:%M:%S").collect();
     let specifics = RefreshKind::new()
         .with_cpu(CpuRefreshKind::new().with_cpu_usage())
-        .with_memory();
+        .with_memory(MemoryRefreshKind::everything());
     let system = RefCell::new(System::new_with_specifics(specifics));
     let manager = battery::Manager::new()?;
     let update_status = move || {
@@ -238,6 +246,7 @@ pub fn configure() {
             device.set_left_handed(false);
             device.set_accel_profile(ACCEL_PROFILE_FLAT);
             device.set_accel_speed(1.70);
+            device.set_natural_scrolling_enabled(true);
             device.set_transform_matrix([[0.35, 0.0], [0.0, 0.35]]);
         }
         device.set_tap_enabled(true);
@@ -256,12 +265,26 @@ pub fn configure() {
         Command::new("/usr/libexec/polkit-kde-authentication-agent-1").spawn();
         Command::new("fnott").spawn();
         Command::new("wbg")
-            .arg("/home/uncomfy/.config/river/backgrounds/romb.png")
+            .arg("/home/uncomfy/.config/river/backgrounds/openSUSE-Gruvbox.png")
+            .spawn();
+        Command::new("wl-paste")
+            .arg("-t")
+            .arg("text")
+            .arg("--watch")
+            .arg("clipman")
+            .arg("store")
             .spawn();
     });
 
-    // TODO: add a screenlocker once ext_session_lock-v1 lands
-
+    on_idle(|| {
+        Command::new("jay")
+            .arg("run-privileged")
+            .arg("--")
+            .arg("swaylock")
+            .arg("-c")
+            .arg("af3a03")
+            .spawn()
+    })
 }
 
 config!(configure);
