@@ -108,7 +108,9 @@ fn configure_seat(s: Seat) {
     });
 
     s.bind(MOD | SHIFT | SYM_p, || {
-        Command::new("/home/uncomfy/.local/bin/mygrimshot.sh area").spawn()
+        Command::new("/home/uncomfy/.local/bin/mygrimshot.sh")
+            .arg("area")
+            .spawn()
     });
 
     s.bind(MOD | SHIFT | SYM_x, quit);
