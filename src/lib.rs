@@ -20,10 +20,10 @@ use {
         keyboard::{
             mods::{Modifiers, ALT, CTRL, MOD4, SHIFT},
             syms::{
-                SYM_Return, SYM_b, SYM_d, SYM_f, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q,
-                SYM_r, SYM_slash, SYM_t, SYM_u, SYM_v, SYM_x, SYM_y, SYM_1, SYM_2, SYM_3, SYM_4,
-                SYM_5, SYM_6, SYM_F1, SYM_F10, SYM_F11, SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5,
-                SYM_F6, SYM_F7, SYM_F8, SYM_F9,
+                SYM_Return, SYM_b, SYM_d, SYM_e, SYM_f, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m,
+                SYM_q, SYM_r, SYM_slash, SYM_t, SYM_u, SYM_v, SYM_x, SYM_y, SYM_1, SYM_2, SYM_3,
+                SYM_4, SYM_5, SYM_6, SYM_F1, SYM_F10, SYM_F11, SYM_F12, SYM_F2, SYM_F3, SYM_F4,
+                SYM_F5, SYM_F6, SYM_F7, SYM_F8, SYM_F9,
             },
         },
         quit, reload,
@@ -67,6 +67,9 @@ fn configure_seat(s: Seat) {
     s.bind(MOD | SYM_space, move || s.toggle_floating());
 
     s.bind(MOD | SHIFT | SYM_Return, || Command::new("foot").spawn());
+    s.bind(MOD | SYM_e, || {
+        Command::new("/home/uncomfy/.config/river/emoji.sh").spawn()
+    });
 
     s.bind(MOD | SYM_c, || {
         Command::new("/home/uncomfy/.config/river/clipboardmanager.sh").spawn()
