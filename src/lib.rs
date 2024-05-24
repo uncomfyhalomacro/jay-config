@@ -1,7 +1,11 @@
 use battery::{self};
 use jay_config::{
     input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH},
-    keyboard::syms::{SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space},
+    keyboard::{
+        parse_keymap,
+        syms::{SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space},
+        Keymap,
+    },
     on_idle,
 };
 use uom::{fmt::DisplayStyle::*, si::f32::*, si::time::minute};
@@ -20,10 +24,12 @@ use {
         keyboard::{
             mods::{Modifiers, ALT, CTRL, MOD4, SHIFT},
             syms::{
-                SYM_Return, SYM_b, SYM_d, SYM_e, SYM_f, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m,
-                SYM_q, SYM_r, SYM_slash, SYM_t, SYM_u, SYM_v, SYM_x, SYM_y, SYM_1, SYM_2, SYM_3,
-                SYM_4, SYM_5, SYM_6, SYM_F1, SYM_F10, SYM_F11, SYM_F12, SYM_F2, SYM_F3, SYM_F4,
-                SYM_F5, SYM_F6, SYM_F7, SYM_F8, SYM_F9,
+                SYM_Return, SYM_XF86AudioLowerVolume, SYM_XF86AudioRaiseVolume,
+                SYM_XF86MonBrightnessDown, SYM_XF86MonBrightnessUp, SYM_b, SYM_d, SYM_e, SYM_f,
+                SYM_function, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q, SYM_r, SYM_slash,
+                SYM_t, SYM_u, SYM_v, SYM_x, SYM_y, SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6,
+                SYM_F1, SYM_F10, SYM_F11, SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7,
+                SYM_F8, SYM_F9,
             },
         },
         quit, reload,
@@ -41,8 +47,9 @@ use {
 };
 
 const MOD: Modifiers = MOD4;
-
 fn configure_seat(s: Seat) {
+    let keymap: Keymap = parse_keymap(include_str!("keymap.xkb"));
+    s.set_keymap(keymap);
     s.bind(MOD | SYM_h, move || s.focus(Left));
     s.bind(MOD | SYM_j, move || s.focus(Down));
     s.bind(MOD | SYM_k, move || s.focus(Up));
@@ -116,17 +123,47 @@ fn configure_seat(s: Seat) {
             .spawn()
     });
 
+    s.bind_masked(Modifiers::NONE, SYM_XF86MonBrightnessUp, move || {
+        Command::new("/usr/bin/brightnessctl")
+            .arg("s")
+            .arg("+4%")
+            .spawn()
+    });
+
+    s.bind_masked(Modifiers::NONE, SYM_XF86MonBrightnessDown, move || {
+        Command::new("/usr/bin/brightnessctl")
+            .arg("s")
+            .arg("4%-")
+            .spawn()
+    });
+
+    s.bind_masked(Modifiers::NONE, SYM_XF86AudioRaiseVolume, move || {
+        Command::new("wpctl")
+            .arg("set-volume")
+            .arg("@DEFAULT_SINK@")
+            .arg("1%+")
+            .spawn()
+    });
+
+    s.bind_masked(Modifiers::NONE, SYM_XF86AudioLowerVolume, move || {
+        Command::new("wpctl")
+            .arg("set-volume")
+            .arg("@DEFAULT_SINK@")
+            .arg("1%-")
+            .spawn()
+    });
+
     s.bind(MOD | SHIFT | SYM_x, quit);
 
     s.bind(MOD | SHIFT | SYM_r, reload);
 
-    let use_hc = Cell::new(true);
-    s.bind(MOD | SHIFT | SYM_m, move || {
-        let hc = !use_hc.get();
-        use_hc.set(hc);
-        log::info!("use hc = {}", hc);
-        s.use_hardware_cursor(hc);
-    });
+    // let use_hc = Cell::new(true);
+    // s.bind(MOD | SHIFT | SYM_m, move || {
+    //     let hc = !use_hc.get();
+    //     use_hc.set(hc);
+    //     log::info!("use hc = {}", hc);
+    //     s.use_hardware_cursor(hc);
+    // });
 
     let fnkeys = [
         SYM_F1, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7, SYM_F8, SYM_F9, SYM_F10, SYM_F11,
@@ -146,6 +183,8 @@ fn configure_seat(s: Seat) {
             s.show_workspace(ws);
         });
     }
+
+    s.use_hardware_cursor(false);
 
     // fn do_grab(s: Seat, grab: bool) {
     //     for device in s.input_devices() {
@@ -185,6 +224,33 @@ fn configure_seat(s: Seat) {
 //     Ok(())
 // }
 
+// TODO wireplumber.rs
+fn get_wireplumber() -> String {
+    let vol = std::process::Command::new("wpctl")
+        .arg("get-volume")
+        .arg("@DEFAULT_SINK@")
+        .output()
+        .expect("Command failed");
+
+    unsafe { String::from_utf8_unchecked(vol.stdout) }
+}
+
+fn get_brightness() -> f32 {
+    let backlight: String = unsafe {
+        String::from_utf8_unchecked(
+            std::process::Command::new("brightnessctl")
+                .arg("get")
+                .output()
+                .expect("Command failed")
+                .stdout,
+        )
+    }
+    .trim()
+    .into();
+    let backlight = backlight.parse::<f32>().expect("Cannot parse value");
+    backlight / 240_f32
+}
+
 fn setup_status() -> Result<(), battery::Error> {
     let time_format: Vec<_> = StrftimeItems::new("%Y-%m-%d %H:%M:%S").collect();
     let specifics = RefreshKind::new()
@@ -194,9 +260,11 @@ fn setup_status() -> Result<(), battery::Error> {
     let manager = battery::Manager::new()?;
     let update_status = move || {
         let batteries = manager.batteries().unwrap();
+        let volume = get_wireplumber();
+        let brightness = get_brightness();
         let mut system = system.borrow_mut();
         system.refresh_specifics(specifics);
-        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / 100.0;
+        let cpu_usage = system.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / 8.0;
         let used = system.used_memory() as f64 / (1024 * 1024) as f64;
         let total = system.total_memory() as f64 / (1024 * 1024) as f64;
         let s = Time::format_args(minute, Abbreviation);
@@ -205,7 +273,9 @@ fn setup_status() -> Result<(), battery::Error> {
         // let battery_percent = battery.energy_full();
         for mut battery in batteries {
             let status = format!(
-                r##"BAT: M-{:?} DT-{:?} CT-{:?} Capacity-{:?}% <span color="#333333">|</span> MEM: {:.1}/{:.1} <span color="#333333">|</span> CPU: {:5.2} <span color="#333333">|</span> {}"##,
+                r##"Brightness: {:.2} | {} | BAT: M-{:?} DT-{:?} CT-{:?} Capacity-{:?}% <span color="#333333">|</span> MEM: {:.1}/{:.1} <span color="#333333">|</span> CPU: {:5.2} <span color="#333333">|</span> {}"##,
+                brightness,
+                volume.trim(),
                 battery.as_mut().expect("Battery not found").state(),
                 s.with(
                     battery
@@ -235,7 +305,7 @@ fn setup_status() -> Result<(), battery::Error> {
         }
     };
     update_status();
-    let period = Duration::from_secs(5);
+    let period = Duration::from_millis(100);
     let timer = get_timer("status_timer");
     timer.repeated(duration_until_wall_clock_is_multiple_of(period), period);
     timer.on_tick(update_status);
@@ -251,9 +321,9 @@ pub fn configure() {
             device.set_left_handed(false);
             device.set_accel_profile(ACCEL_PROFILE_FLAT);
             device.set_accel_speed(1.70);
-            device.set_natural_scrolling_enabled(true);
             device.set_transform_matrix([[0.35, 0.0], [0.0, 0.35]]);
         }
+        device.set_natural_scrolling_enabled(true);
         device.set_tap_enabled(true);
         device.set_seat(seat);
     };
@@ -261,6 +331,7 @@ pub fn configure() {
     on_new_input_device(handle_input_device);
 
     set_env("GTK_THEME", "Adwaita:dark");
+    set_env("XCURSOR_THEME", "Adwaita");
 
     // Configure the status message
     setup_status().expect("Status not working");
