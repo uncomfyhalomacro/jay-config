@@ -305,7 +305,7 @@ fn setup_status() -> Result<(), battery::Error> {
         }
     };
     update_status();
-    let period = Duration::from_millis(100);
+    let period = Duration::from_millis(300);
     let timer = get_timer("status_timer");
     timer.repeated(duration_until_wall_clock_is_multiple_of(period), period);
     timer.on_tick(update_status);
