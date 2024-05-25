@@ -3,7 +3,7 @@ use jay_config::{
     input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH},
     keyboard::{
         parse_keymap,
-        syms::{SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space},
+        syms::{SYM_XF86AudioMute, SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space},
         Keymap,
     },
     on_idle,
@@ -15,19 +15,16 @@ use {
     chrono::{format::StrftimeItems, Local},
     jay_config::{
         config,
-        embedded::grab_input_device,
         exec::set_env,
         exec::Command,
         get_workspace,
-        input::capability::CAP_KEYBOARD,
         input::{get_seat, input_devices, on_new_input_device, InputDevice, Seat},
         keyboard::{
             mods::{Modifiers, ALT, CTRL, MOD4, SHIFT},
             syms::{
                 SYM_Return, SYM_XF86AudioLowerVolume, SYM_XF86AudioRaiseVolume,
-                SYM_XF86MonBrightnessDown, SYM_XF86MonBrightnessUp, SYM_b, SYM_d, SYM_e, SYM_f,
-                SYM_function, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q, SYM_r, SYM_slash,
-                SYM_t, SYM_u, SYM_v, SYM_x, SYM_y, SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6,
+                SYM_XF86MonBrightnessDown, SYM_XF86MonBrightnessUp, SYM_b, SYM_d, SYM_e, SYM_f, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q, SYM_r, SYM_slash,
+                SYM_t, SYM_u, SYM_v, SYM_x, SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6,
                 SYM_F1, SYM_F10, SYM_F11, SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7,
                 SYM_F8, SYM_F9,
             },
@@ -41,7 +38,7 @@ use {
         Direction::{Down, Left, Right, Up},
     },
     std::{
-        cell::{Cell, RefCell},
+        cell::RefCell,
         time::Duration,
     },
 };
@@ -85,7 +82,10 @@ fn configure_seat(s: Seat) {
     s.bind(MOD | SYM_u, || Command::new("fuzzel").spawn());
 
     s.bind(MOD | SYM_v, || {
-        Command::new("tessen")
+        Command::new("jay")
+            .arg("run-privileged")
+            .arg("--")
+            .arg("tessen")
             .arg("-d")
             .arg("fuzzel")
             .arg("-a")
@@ -153,6 +153,14 @@ fn configure_seat(s: Seat) {
             .spawn()
     });
 
+    s.bind_masked(Modifiers::NONE, SYM_XF86AudioMute, move || {
+        Command::new("wpctl")
+            .arg("set-mute")
+            .arg("@DEFAULT_SINK@")
+            .arg("toggle")
+            .spawn()
+    });
+
     s.bind(MOD | SHIFT | SYM_x, quit);
 
     s.bind(MOD | SHIFT | SYM_r, reload);
@@ -175,6 +183,7 @@ fn configure_seat(s: Seat) {
     }
 
     let numkeys = [SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6];
+
     for (i, sym) in numkeys.into_iter().enumerate() {
         let ws = get_workspace(&format!("{}", i + 1));
         s.bind(MOD | sym, move || s.show_workspace(ws));
@@ -343,7 +352,11 @@ pub fn configure() {
         Command::new("wbg")
             .arg("/home/uncomfy/.config/river/backgrounds/openSUSE-Gruvbox.png")
             .spawn();
-        Command::new("wl-paste")
+
+        Command::new("jay")
+            .arg("run-privileged")
+            .arg("--")
+            .arg("wl-paste")
             .arg("-t")
             .arg("text")
             .arg("--watch")
@@ -356,9 +369,8 @@ pub fn configure() {
         Command::new("jay")
             .arg("run-privileged")
             .arg("--")
-            .arg("swaylock")
-            .arg("-c")
-            .arg("af3a03")
+            .arg("waylock")
+            .arg("-fork-on-lock")
             .spawn()
     })
 }
