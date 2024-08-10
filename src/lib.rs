@@ -28,7 +28,7 @@ use {
                 SYM_XF86MonBrightnessDown, SYM_XF86MonBrightnessUp, SYM_b, SYM_d, SYM_e, SYM_f,
                 SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q, SYM_r, SYM_slash, SYM_t, SYM_u,
                 SYM_v, SYM_x, SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6, SYM_F1, SYM_F10, SYM_F11,
-                SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7, SYM_F8, SYM_F9,
+                SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7, SYM_F8, SYM_F9, SYM_y
             },
         },
         quit, reload,
