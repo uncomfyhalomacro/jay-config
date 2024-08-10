@@ -70,7 +70,7 @@ fn configure_seat(s: Seat) {
     s.bind(MOD | SYM_space, move || s.toggle_floating());
 
     s.bind(MOD | SHIFT | SYM_Return, || {
-        Command::new("alacritty").spawn()
+        Command::new("foot").spawn()
     });
 
     s.bind(MOD | SYM_e, || {
