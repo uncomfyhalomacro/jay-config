@@ -3,7 +3,9 @@ use jay_config::{
     input::{acceleration::ACCEL_PROFILE_FLAT, capability::CAP_TOUCH},
     keyboard::{
         parse_keymap,
-        syms::{SYM_XF86AudioMute, SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space},
+        syms::{
+            SYM_XF86AudioMute, SYM_backslash, SYM_c, SYM_p, SYM_s, SYM_space, SYM_7, SYM_8, SYM_9,
+        },
         Keymap,
     },
     on_idle,
@@ -23,10 +25,10 @@ use {
             mods::{Modifiers, ALT, CTRL, MOD4, SHIFT},
             syms::{
                 SYM_Return, SYM_XF86AudioLowerVolume, SYM_XF86AudioRaiseVolume,
-                SYM_XF86MonBrightnessDown, SYM_XF86MonBrightnessUp, SYM_b, SYM_d, SYM_e, SYM_f, SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q, SYM_r, SYM_slash,
-                SYM_t, SYM_u, SYM_v, SYM_x, SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6,
-                SYM_F1, SYM_F10, SYM_F11, SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7,
-                SYM_F8, SYM_F9,
+                SYM_XF86MonBrightnessDown, SYM_XF86MonBrightnessUp, SYM_b, SYM_d, SYM_e, SYM_f,
+                SYM_h, SYM_i, SYM_j, SYM_k, SYM_l, SYM_m, SYM_q, SYM_r, SYM_slash, SYM_t, SYM_u,
+                SYM_v, SYM_x, SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6, SYM_F1, SYM_F10, SYM_F11,
+                SYM_F12, SYM_F2, SYM_F3, SYM_F4, SYM_F5, SYM_F6, SYM_F7, SYM_F8, SYM_F9,
             },
         },
         quit, reload,
@@ -37,10 +39,7 @@ use {
         Axis::{Horizontal, Vertical},
         Direction::{Down, Left, Right, Up},
     },
-    std::{
-        cell::RefCell,
-        time::Duration,
-    },
+    std::{cell::RefCell, time::Duration},
 };
 
 const MOD: Modifiers = MOD4;
@@ -70,9 +69,16 @@ fn configure_seat(s: Seat) {
 
     s.bind(MOD | SYM_space, move || s.toggle_floating());
 
-    s.bind(MOD | SHIFT | SYM_Return, || Command::new("foot").spawn());
+    s.bind(MOD | SHIFT | SYM_Return, || {
+        Command::new("alacritty").spawn()
+    });
+
     s.bind(MOD | SYM_e, || {
         Command::new("/home/uncomfy/.config/river/emoji.sh").spawn()
+    });
+
+    s.bind(MOD | SYM_y, || {
+        Command::new("/home/uncomfy/.local/bin/yt-cli.nu").spawn()
     });
 
     s.bind(MOD | SYM_c, || {
@@ -182,7 +188,9 @@ fn configure_seat(s: Seat) {
         s.bind(CTRL | ALT | sym, move || switch_to_vt(i as u32 + 1));
     }
 
-    let numkeys = [SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6];
+    let numkeys = [
+        SYM_1, SYM_2, SYM_3, SYM_4, SYM_5, SYM_6, SYM_7, SYM_8, SYM_9,
+    ];
 
     for (i, sym) in numkeys.into_iter().enumerate() {
         let ws = get_workspace(&format!("{}", i + 1));
@@ -217,21 +225,26 @@ fn configure_seat(s: Seat) {
     // do_grab(s, false);
 }
 
-// fn check_battery() -> battery::Result<()> {
-//     let manager = battery::Manager::new()?;
-//     let mut battery = match manager.batteries()?.next() {
-//         Some(Ok(battery)) => battery,
-//         Some(Err(e)) => {
-//             eprintln!("Unable to access battery information");
-//             return Err(e);
-//         }
-//         None => {
-//             eprintln!("Unable to find any batteries");
-//             return Err(io::Error::from(io::ErrorKind::NotFound).into());
-//         }
-//     };
-//     Ok(())
-// }
+fn check_battery() -> battery::Result<battery::Battery> {
+    let manager = battery::Manager::new()?;
+    let mut battery = match manager.batteries()?.next() {
+        Some(Ok(battery)) => battery,
+        Some(Err(e)) => {
+            eprintln!("Unable to access battery information");
+            return Err(e);
+        }
+        None => {
+            eprintln!("Unable to find any batteries");
+            // Thin wrapper from battery crate
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Unable to find any batteries",
+            )
+            .into());
+        }
+    };
+    Ok(battery)
+}
 
 // TODO wireplumber.rs
 fn get_wireplumber() -> String {
@@ -266,9 +279,8 @@ fn setup_status() -> Result<(), battery::Error> {
         .with_cpu(CpuRefreshKind::new().with_cpu_usage())
         .with_memory(MemoryRefreshKind::everything());
     let system = RefCell::new(System::new_with_specifics(specifics));
-    let manager = battery::Manager::new()?;
     let update_status = move || {
-        let batteries = manager.batteries().unwrap();
+        let battery = check_battery().unwrap();
         let volume = get_wireplumber();
         let brightness = get_brightness();
         let mut system = system.borrow_mut();
@@ -277,41 +289,22 @@ fn setup_status() -> Result<(), battery::Error> {
         let used = system.used_memory() as f64 / (1024 * 1024) as f64;
         let total = system.total_memory() as f64 / (1024 * 1024) as f64;
         let s = Time::format_args(minute, Abbreviation);
-        // let battery_time_left = battery.time_to_empty;
-        // let battery_percent_left = battery.energy();
-        // let battery_percent = battery.energy_full();
-        for mut battery in batteries {
-            let status = format!(
-                r##"Brightness: {:.2} | {} | BAT: M-{:?} DT-{:?} CT-{:?} Capacity-{:?}% <span color="#333333">|</span> MEM: {:.1}/{:.1} <span color="#333333">|</span> CPU: {:5.2} <span color="#333333">|</span> {}"##,
-                brightness,
-                volume.trim(),
-                battery.as_mut().expect("Battery not found").state(),
-                s.with(
-                    battery
-                        .as_mut()
-                        .expect("Battery not found")
-                        .time_to_empty()
-                        .unwrap_or_default()
-                ),
-                s.with(
-                    battery
-                        .as_mut()
-                        .expect("Battery not found")
-                        .time_to_full()
-                        .unwrap_or_default()
-                ),
-                battery
-                    .as_mut()
-                    .expect("Battery not found")
-                    .state_of_charge()
-                    * Ratio::new::<battery::units::ratio::ratio>(100.0),
-                used,
-                total,
-                cpu_usage,
-                Local::now().format_with_items(time_format.iter())
-            );
-            set_status(&status);
-        }
+        let battery_time_left = battery.time_to_empty();
+        let battery_percent_left = battery.time_to_full();
+        let battery_state_of_charge = battery.state_of_charge();
+        let status = format!(
+            r##"Brightness: {:.2} | {} | Battery: {:?}:{:?}-{:?}  <span color="#333333">|</span> MEM: {:.1}/{:.1} <span color="#333333">|</span> CPU: {:5.2} <span color="#333333">|</span> {}"##,
+            brightness,
+            volume.trim(),
+            battery_time_left,
+            battery_percent_left,
+            battery_state_of_charge,
+            used,
+            total,
+            cpu_usage,
+            Local::now().format_with_items(time_format.iter())
+        );
+        set_status(&status);
     };
     update_status();
     let period = Duration::from_millis(300);
@@ -341,6 +334,7 @@ pub fn configure() {
 
     set_env("GTK_THEME", "Adwaita:dark");
     set_env("XCURSOR_THEME", "Adwaita");
+    // set_env("MESA_LOADER_DRIVER_OVERRIDE", "zink");
 
     // Configure the status message
     setup_status().expect("Status not working");
